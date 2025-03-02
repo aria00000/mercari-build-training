@@ -79,7 +79,8 @@ def add_item(
         raise HTTPException(status_code=400, detail="name is required")
     
     image = hash_image(image)
-    insert_item(Item(name=name, category=category, image=image))
+    #insert_item(Item(name=name, category=category, image=image))
+    insert_item_db(Item(name=name, category=category, image=image), db)
     return AddItemResponse(**{"message": f"item received: {name}"})
 
 
@@ -109,6 +110,18 @@ def insert_item(item: Item):
     # STEP 4-1: add an implementation to store an item
     with open('items.json', 'w') as f:
         json.dump({"items": [{"name": item.name, "category": item.category, "image_name": item.image}]}, f, indent=4)
+    return
+
+def insert_item_db(item: Item, conn: sqlite3.Connection):
+    cur = conn.cursor()
+    if not cur.fetchone():
+        with open("db/items.sql", "r") as f:
+            cur.executescript(f.read())
+    cur.execute(
+        "INSERT INTO items (name, category, image_name) VALUES (?, ?, ?)",
+        (item.name, item.category, item.image)
+    )
+    conn.commit()
     return
 
 def hash_image(image):
