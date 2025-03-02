@@ -7,6 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
+import json
+import hashlib
 
 
 # Define the path to the images & sqlite3 database
@@ -40,7 +42,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 logger = logging.getLogger("uvicorn")
-logger.level = logging.INFO
+logger.level = logging.DEBUG
 images = pathlib.Path(__file__).parent.resolve() / "images"
 origins = [os.environ.get("FRONT_URL", "http://localhost:3000")]
 app.add_middleware(
@@ -70,12 +72,14 @@ class AddItemResponse(BaseModel):
 def add_item(
     name: str = Form(...),
     category: str = Form(...),
+    image: str = Form(...),
     db: sqlite3.Connection = Depends(get_db),
 ):
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
-
-    insert_item(Item(name=name, category=category))
+    
+    image = hash_image(image)
+    insert_item(Item(name=name, category=category, image=image))
     return AddItemResponse(**{"message": f"item received: {name}"})
 
 
@@ -98,8 +102,26 @@ async def get_image(image_name):
 class Item(BaseModel):
     name: str
     category: str
+    image: str 
 
 
 def insert_item(item: Item):
     # STEP 4-1: add an implementation to store an item
-    pass
+    with open('items.json', 'w') as f:
+        json.dump({"items": [{"name": item.name, "category": item.category, "image_name": item.image}]}, f, indent=4)
+    return
+
+def hash_image(image):
+    with open(image, 'rb') as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+@app.get("/items")
+def get_items():
+    with open('items.json', 'r') as f:
+        return json.load(f)
+
+@app.get("/items/1")
+def get_item_1():
+    with open('items.json', 'r') as f:
+        return json.load(f)["items"][0]
