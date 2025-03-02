@@ -107,8 +107,11 @@ class Item(BaseModel):
 
 def insert_item(item: Item):
     # STEP 4-1: add an implementation to store an item
+    with open('items.json', 'r') as f:
+        data = json.load(f)
+    data["items"].append({"name": item.name, "category": item.category, "image_name": item.image})
     with open('items.json', 'w') as f:
-        json.dump({"items": [{"name": item.name, "category": item.category, "image_name": item.image}]}, f, indent=4)
+        json.dump(data, f, indent=4)
     return
 
 def hash_image(image):
@@ -120,7 +123,7 @@ def hash_image(image):
 def get_items():
     with open('items.json', 'r') as f:
         return json.load(f)
-
+    
 @app.get("/items/1")
 def get_item_1():
     with open('items.json', 'r') as f:
