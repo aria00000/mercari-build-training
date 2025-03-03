@@ -116,15 +116,22 @@ def insert_item(item: Item):
 
 def hash_image(image):
     with open(image, 'rb') as f:
-        return hashlib.sha256(f.read()).hexdigest()
+        image = f.read()
+    hash_value = hashlib.sha256(image).hexdigest()
+    rename = f"{hash_value}.jpg"
+    image_path = images / rename
+    with open(image_path, "wb") as f:
+            f.write(image)
+    return hash_value
+    
 
 
 @app.get("/items")
 def get_items():
-    with open('items.json', 'r') as f:
+    with open('items.json', 'r', encoding="utf-8") as f:
         return json.load(f)
     
 @app.get("/items/1")
 def get_item_1():
-    with open('items.json', 'r') as f:
+    with open('items.json', 'r', encoding="utf-8") as f:
         return json.load(f)["items"][0]
