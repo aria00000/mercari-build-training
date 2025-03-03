@@ -1,7 +1,12 @@
-CREATE TABLE items (
+CREATE TABLE IF NOT EXISTS categories(
+    id INTEGER PRIMARY KEY,
+    category TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS items (
     id INTEGER PRIMARY KEY, 
-    name TEXT, 
-    category TEXT, 
-    image_name TEXT
+    name TEXT NOT NULL, 
+    category_id INTEGER, 
+    image_name TEXT,
+    FOREIGN KEY (category_id) REFERENCES categories (category_id)
     );
-    

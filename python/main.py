@@ -79,7 +79,7 @@ def add_item(
         raise HTTPException(status_code=400, detail="name is required")
     
     image = hash_image(image)
-    #insert_item(Item(name=name, category=category, image=image))
+    insert_item(Item(name=name, category=category, image=image))
     insert_item_db(Item(name=name, category=category, image=image), db)
     return AddItemResponse(**{"message": f"item received: {name}"})
 
@@ -114,13 +114,17 @@ def insert_item(item: Item):
 
 def insert_item_db(item: Item, conn: sqlite3.Connection):
     cur = conn.cursor()
-    if not cur.fetchone():
-        with open("db/items.sql", "r") as f:
-            cur.executescript(f.read())
-    cur.execute(
-        "INSERT INTO items (name, category, image_name) VALUES (?, ?, ?)",
-        (item.name, item.category, item.image)
-    )
+    with open("db/items.sql", "r") as f:
+        cur.executescript(f.read())
+    cur.execute("SELECT id FROM categories WHERE category = ?", (item.category,))
+    category_data = cur.fetchone()
+    if category_data is None:
+        cur.execute("INSERT INTO categories (category) VALUES (?)", (item.category,))
+        category_id = cur.lastrowid 
+    else:
+        category_id = category_data["id"]
+    cur.execute("INSERT INTO items (name, category_id, image_name) VALUES (?, ?, ?)", 
+                (item.name, category_id, item.image))
     conn.commit()
     return
 
@@ -130,11 +134,39 @@ def hash_image(image):
 
 
 @app.get("/items")
-def get_items():
-    with open('items.json', 'r') as f:
-        return json.load(f)
+def get_items(conn = Depends(get_db)):
+    #with open('items.json', 'r') as f:
+        #return json.load(f)
+    
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT items.name, categories.category AS category, items.image_name 
+        FROM items 
+        JOIN categories ON items.category_id = categories.id
+    """)
+    raw = cur.fetchall()
+    columns_names = [description[0] for description in cur.description]
+    data = [dict(zip(columns_names, row)) for row in raw]
+    return {"items": data} 
+    
 
 @app.get("/items/1")
 def get_item_1():
     with open('items.json', 'r') as f:
         return json.load(f)["items"][0]
+    
+@app.get("/search")
+def serch_item(keyword: str, conn=Depends(get_db)):
+    cur = conn.cursor()
+    query = """
+    SELECT items.name, categories.category AS category, items.image_name
+    FROM items
+    JOIN categories ON items.category_id = categories.id
+    WHERE items.name = ?
+    """
+    cur.execute(query, (keyword,))
+    raw = cur.fetchall()
+    columns_names = [description[0] for description in cur.description]
+    data = [dict(zip(columns_names, row)) for row in raw]
+    return {"items": data} 
+    
