@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-import json
 import hashlib
 
 
@@ -79,7 +78,6 @@ def add_item(
         raise HTTPException(status_code=400, detail="name is required")
     
     image = hash_image(image)
-    insert_item(Item(name=name, category=category, image=image))
     insert_item_db(Item(name=name, category=category, image=image), db)
     return AddItemResponse(**{"message": f"item received: {name}"})
 
@@ -106,12 +104,6 @@ class Item(BaseModel):
     image: str 
 
 
-def insert_item(item: Item):
-    # STEP 4-1: add an implementation to store an item
-    with open('items.json', 'w') as f:
-        json.dump({"items": [{"name": item.name, "category": item.category, "image_name": item.image}]}, f, indent=4)
-    return
-
 def insert_item_db(item: Item, conn: sqlite3.Connection):
     cur = conn.cursor()
     with open("db/items.sql", "r") as f:
@@ -134,10 +126,7 @@ def hash_image(image):
 
 
 @app.get("/items")
-def get_items(conn = Depends(get_db)):
-    #with open('items.json', 'r') as f:
-        #return json.load(f)
-    
+def get_items(conn = Depends(get_db)):  
     cur = conn.cursor()
     cur.execute("""
         SELECT items.name, categories.category AS category, items.image_name 
@@ -150,10 +139,17 @@ def get_items(conn = Depends(get_db)):
     return {"items": data} 
     
 
-@app.get("/items/1")
-def get_item_1():
-    with open('items.json', 'r') as f:
-        return json.load(f)["items"][0]
+@app.get("/items/{id}")
+def get_item_id(id: int, conn: sqlite3.Connection = Depends(get_db)):
+    cur = conn.cursor()
+    cur.execute(
+        " SELECT * FROM items WHERE id = ?", (id,)
+        )
+    raw = cur.fetchall()
+    columns_names = [description[0] for description in cur.description]
+    data = [dict(zip(columns_names, row)) for row in raw]
+    return {"items": data} 
+    
     
 @app.get("/search")
 def serch_item(keyword: str, conn=Depends(get_db)):
