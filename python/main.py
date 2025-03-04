@@ -131,7 +131,7 @@ def get_items():
     with open('items.json', 'r', encoding="utf-8") as f:
         return json.load(f)
     
-@app.get("/items/1")
-def get_item_1():
+@app.get("/items/{id}")
+def get_item_id(id:int):
     with open('items.json', 'r', encoding="utf-8") as f:
-        return json.load(f)["items"][0]
+        return json.load(f)["items"][id - 1]
