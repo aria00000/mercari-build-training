@@ -1,7 +1,7 @@
 import os
 import logging
 import pathlib
-from fastapi import FastAPI, Form, HTTPException, Depends
+from fastapi import FastAPI, Form, HTTPException, Depends, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
@@ -19,7 +19,7 @@ def get_db():
     if not db.exists():
         yield
 
-    conn = sqlite3.connect(db)
+    conn = sqlite3.connect(db,  check_same_thread=False)
     conn.row_factory = sqlite3.Row  # Return rows as dictionaries
     try:
         yield conn
@@ -29,7 +29,13 @@ def get_db():
 
 # STEP 5-1: set up the database connection
 def setup_database():
-    pass
+    conn = sqlite3.connect(db)
+    cursor = conn.cursor()
+    sql_file = pathlib.Path(__file__).parent.resolve() / "db" / "items.sql"
+    with open(sql_file, "r") as f:
+        cursor.executescript(f.read())
+    conn.commit()
+    conn.close()
 
 
 @asynccontextmanager
@@ -68,10 +74,10 @@ class AddItemResponse(BaseModel):
 
 # add_item is a handler to add a new item for POST /items .
 @app.post("/items", response_model=AddItemResponse)
-def add_item(
+async def add_item(
     name: str = Form(...),
     category: str = Form(...),
-    image: str = Form(...),
+    image: UploadFile = File(...),
     db: sqlite3.Connection = Depends(get_db),
 ):
     if not name:
@@ -84,7 +90,7 @@ def add_item(
 
 # get_image is a handler to return an image for GET /images/{filename} .
 @app.get("/image/{image_name}")
-async def get_image(image_name):
+def get_image(image_name):
     # Create image path
     image = images / image_name
 
@@ -108,10 +114,10 @@ def insert_item_db(item: Item, conn: sqlite3.Connection):
     cur = conn.cursor()
     with open("db/items.sql", "r") as f:
         cur.executescript(f.read())
-    cur.execute("SELECT id FROM categories WHERE category = ?", (item.category,))
+    cur.execute("SELECT id FROM categories WHERE name = ?", (item.category,))
     category_data = cur.fetchone()
     if category_data is None:
-        cur.execute("INSERT INTO categories (category) VALUES (?)", (item.category,))
+        cur.execute("INSERT INTO categories (name) VALUES (?)", (item.category,))
         category_id = cur.lastrowid 
     else:
         category_id = category_data["id"]
@@ -120,16 +126,21 @@ def insert_item_db(item: Item, conn: sqlite3.Connection):
     conn.commit()
     return
 
-def hash_image(image):
-    with open(image, 'rb') as f:
-        return hashlib.sha256(f.read()).hexdigest()
+def hash_image(image: UploadFile):
+    file_content = image.file.read()  
+    hash_value = hashlib.sha256(file_content).hexdigest()
+    rename = f"{hash_value}.jpg"
+    image_path = images / rename
+    with open(image_path, "wb") as f:
+            f.write(file_content)  
+    return rename
 
 
 @app.get("/items")
 def get_items(conn = Depends(get_db)):  
     cur = conn.cursor()
     cur.execute("""
-        SELECT items.name, categories.category AS category, items.image_name 
+        SELECT items.name, categories.name AS category, items.image_name 
         FROM items 
         JOIN categories ON items.category_id = categories.id
     """)
@@ -155,7 +166,7 @@ def get_item_id(id: int, conn: sqlite3.Connection = Depends(get_db)):
 def serch_item(keyword: str, conn=Depends(get_db)):
     cur = conn.cursor()
     query = """
-    SELECT items.name, categories.category AS category, items.image_name
+    SELECT items.name, categories.name AS category, items.image_name
     FROM items
     JOIN categories ON items.category_id = categories.id
     WHERE items.name = ?
