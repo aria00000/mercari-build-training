@@ -111,14 +111,16 @@ class Item(BaseModel):
     category: str
     image: str 
 
-
-def insert_item_db(item: Item, conn: sqlite3.Connection):
-    # STEP 4-1: add an implementation to store an item
+def insert_item(item: Item):
+        # STEP 4-1: add an implementation to store an item
     with open('items.json', 'r') as f:
         data = json.load(f)
     data["items"].append({"name": item.name, "category": item.category, "image_name": item.image})
     with open('items.json', 'w') as f:
         json.dump(data, f, indent=4)
+
+
+def insert_item_db(item: Item, conn: sqlite3.Connection):
     #step5
     cur = conn.cursor()
     with open("db/items.sql", "r") as f:
