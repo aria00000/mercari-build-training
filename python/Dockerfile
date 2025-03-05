@@ -8,15 +8,13 @@ RUN addgroup -S mercari && adduser -S trainee -G mercari
 # 作業ディレクトリを設定
 WORKDIR /app
 
-# 必要な依存関係をコピー
+# ファイルをコピー
 COPY .. /app
 # 仮想環境の作成
 RUN python3 -m venv /app/venv
 
 # 仮想環境に必要なパッケージをインストール
 RUN /app/venv/bin/pip install -r /app/requirements.txt
-
-# アプリケーションコードをコピー
 
 
 # 仮想環境でmain.pyを実行するためのCMD
