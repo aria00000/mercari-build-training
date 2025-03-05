@@ -1,14 +1,14 @@
 import os
 import logging
 import pathlib
-from fastapi import FastAPI, Form, HTTPException, Depends
+from fastapi import FastAPI, Form, HTTPException, Depends, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-import json
 import hashlib
+import json
 
 
 # Define the path to the images & sqlite3 database
@@ -20,7 +20,7 @@ def get_db():
     if not db.exists():
         yield
 
-    conn = sqlite3.connect(db)
+    conn = sqlite3.connect(db,  check_same_thread=False)
     conn.row_factory = sqlite3.Row  # Return rows as dictionaries
     try:
         yield conn
@@ -30,7 +30,13 @@ def get_db():
 
 # STEP 5-1: set up the database connection
 def setup_database():
-    pass
+    conn = sqlite3.connect(db)
+    cursor = conn.cursor()
+    sql_file = pathlib.Path(__file__).parent.resolve() / "db" / "items.sql"
+    with open(sql_file, "r") as f:
+        cursor.executescript(f.read())
+    conn.commit()
+    conn.close()
 
 
 @asynccontextmanager
@@ -69,10 +75,10 @@ class AddItemResponse(BaseModel):
 
 # add_item is a handler to add a new item for POST /items .
 @app.post("/items", response_model=AddItemResponse)
-def add_item(
+async def add_item(
     name: str = Form(...),
     category: str = Form(...),
-    image: str = Form(...),
+    image: UploadFile = File(...),
     db: sqlite3.Connection = Depends(get_db),
 ):
     if not name:
@@ -80,12 +86,13 @@ def add_item(
     
     image = hash_image(image)
     insert_item(Item(name=name, category=category, image=image))
+    insert_item_db(Item(name=name, category=category, image=image), db)
     return AddItemResponse(**{"message": f"item received: {name}"})
 
 
 # get_image is a handler to return an image for GET /images/{filename} .
 @app.get("/image/{image_name}")
-async def get_image(image_name):
+def get_image(image_name):
     # Create image path
     image = images / image_name
 
@@ -105,33 +112,77 @@ class Item(BaseModel):
     image: str 
 
 
-def insert_item(item: Item):
+def insert_item_db(item: Item, conn: sqlite3.Connection):
     # STEP 4-1: add an implementation to store an item
     with open('items.json', 'r') as f:
         data = json.load(f)
     data["items"].append({"name": item.name, "category": item.category, "image_name": item.image})
     with open('items.json', 'w') as f:
         json.dump(data, f, indent=4)
+    #step5
+    cur = conn.cursor()
+    with open("db/items.sql", "r") as f:
+        cur.executescript(f.read())
+    cur.execute("SELECT id FROM categories WHERE name = ?", (item.category,))
+    category_data = cur.fetchone()
+    if category_data is None:
+        cur.execute("INSERT INTO categories (name) VALUES (?)", (item.category,))
+        category_id = cur.lastrowid 
+    else:
+        category_id = category_data["id"]
+    cur.execute("INSERT INTO items (name, category_id, image_name) VALUES (?, ?, ?)", 
+                (item.name, category_id, item.image))
+    conn.commit()
     return
 
-def hash_image(image):
-    with open(image, 'rb') as f:
-        image = f.read()
-    hash_value = hashlib.sha256(image).hexdigest()
+def hash_image(image: UploadFile):
+    file_content = image.file.read()  
+    hash_value = hashlib.sha256(file_content).hexdigest()
     rename = f"{hash_value}.jpg"
     image_path = images / rename
     with open(image_path, "wb") as f:
-            f.write(image)
-    return hash_value
-    
+            f.write(file_content)  
+    return rename
 
 
 @app.get("/items")
-def get_items():
-    with open('items.json', 'r', encoding="utf-8") as f:
-        return json.load(f)
+def get_items(conn = Depends(get_db)):  
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT items.name, categories.name AS category, items.image_name 
+        FROM items 
+        JOIN categories ON items.category_id = categories.id
+    """)
+    raw = cur.fetchall()
+    columns_names = [description[0] for description in cur.description]
+    data = [dict(zip(columns_names, row)) for row in raw]
+    return {"items": data} 
     
+
 @app.get("/items/{id}")
-def get_item_id(id:int):
-    with open('items.json', 'r', encoding="utf-8") as f:
-        return json.load(f)["items"][id - 1]
+def get_item_id(id: int, conn: sqlite3.Connection = Depends(get_db)):
+    cur = conn.cursor()
+    cur.execute(
+        " SELECT * FROM items WHERE id = ?", (id,)
+        )
+    raw = cur.fetchall()
+    columns_names = [description[0] for description in cur.description]
+    data = [dict(zip(columns_names, row)) for row in raw]
+    return {"items": data} 
+    
+    
+@app.get("/search")
+def serch_item(keyword: str, conn:sqlite3.Connection = Depends(get_db)):
+    cur = conn.cursor()
+    query = """
+    SELECT items.name, categories.name AS category, items.image_name
+    FROM items
+    JOIN categories ON items.category_id = categories.id
+    WHERE items.name = ?
+    """
+    cur.execute(query, (keyword,))
+    raw = cur.fetchall()
+    columns_names = [description[0] for description in cur.description]
+    data = [dict(zip(columns_names, row)) for row in raw]
+    return {"items": data} 
+    
