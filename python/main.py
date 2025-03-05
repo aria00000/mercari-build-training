@@ -8,6 +8,7 @@ import sqlite3
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 import hashlib
+import json
 
 
 # Define the path to the images & sqlite3 database
@@ -84,6 +85,7 @@ async def add_item(
         raise HTTPException(status_code=400, detail="name is required")
     
     image = hash_image(image)
+    insert_item(Item(name=name, category=category, image=image))
     insert_item_db(Item(name=name, category=category, image=image), db)
     return AddItemResponse(**{"message": f"item received: {name}"})
 
@@ -111,6 +113,13 @@ class Item(BaseModel):
 
 
 def insert_item_db(item: Item, conn: sqlite3.Connection):
+    # STEP 4-1: add an implementation to store an item
+    with open('items.json', 'r') as f:
+        data = json.load(f)
+    data["items"].append({"name": item.name, "category": item.category, "image_name": item.image})
+    with open('items.json', 'w') as f:
+        json.dump(data, f, indent=4)
+    #step5
     cur = conn.cursor()
     with open("db/items.sql", "r") as f:
         cur.executescript(f.read())
@@ -163,7 +172,7 @@ def get_item_id(id: int, conn: sqlite3.Connection = Depends(get_db)):
     
     
 @app.get("/search")
-def serch_item(keyword: str, conn=Depends(get_db)):
+def serch_item(keyword: str, conn:sqlite3.Connection = Depends(get_db)):
     cur = conn.cursor()
     query = """
     SELECT items.name, categories.name AS category, items.image_name
