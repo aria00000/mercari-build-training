@@ -1,13 +1,12 @@
 import os
 import logging
 import pathlib
-from fastapi import FastAPI, Form, HTTPException, Depends
+from fastapi import FastAPI, Form, HTTPException, Depends, File, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-import json
 import hashlib
 
 
@@ -72,14 +71,14 @@ class AddItemResponse(BaseModel):
 def add_item(
     name: str = Form(...),
     category: str = Form(...),
-    image: str = Form(...),
-    db: sqlite3.Connection = Depends(get_db),
+    image: UploadFile = File(...),
+    db: sqlite3.Connection = Depends(get_db)
 ):
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
     
     image = hash_image(image)
-    insert_item(Item(name=name, category=category, image=image))
+    insert_item_db(Item(name=name, category=category, image=image), db)
     return AddItemResponse(**{"message": f"item received: {name}"})
 
 
@@ -105,33 +104,71 @@ class Item(BaseModel):
     image: str 
 
 
-def insert_item(item: Item):
-    # STEP 4-1: add an implementation to store an item
-    with open('items.json', 'r') as f:
-        data = json.load(f)
-    data["items"].append({"name": item.name, "category": item.category, "image_name": item.image})
-    with open('items.json', 'w') as f:
-        json.dump(data, f, indent=4)
+def insert_item_db(item: Item, conn: sqlite3.Connection):
+    cur = conn.cursor()
+    with open("db/items.sql", "r") as f:
+        cur.executescript(f.read())
+    cur.execute("SELECT id FROM categories WHERE name = ?", (item.category,))
+    category_data = cur.fetchone()
+    if category_data is None:
+        cur.execute("INSERT INTO categories (name) VALUES (?)", (item.category,))
+        category_id = cur.lastrowid 
+    else:
+        category_id = category_data["id"]
+    cur.execute("INSERT INTO items (name, category_id, image_name) VALUES (?, ?, ?)", 
+                (item.name, category_id, item.image))
+    conn.commit()
     return
 
-def hash_image(image):
-    with open(image, 'rb') as f:
-        image = f.read()
-    hash_value = hashlib.sha256(image).hexdigest()
-    rename = f"{hash_value}.jpg"
-    image_path = images / rename
-    with open(image_path, "wb") as f:
-            f.write(image)
-    return hash_value
+def hash_image(image: UploadFile):
+    file_content = image.file.read()
     
+    # SHA-256ハッシュを計算
+    sha256_hash = hashlib.sha256()
+    sha256_hash.update(file_content)
+    
+    # ハッシュ値を16進数形式で返す
+    return sha256_hash.hexdigest()
 
 
 @app.get("/items")
-def get_items():
-    with open('items.json', 'r', encoding="utf-8") as f:
-        return json.load(f)
+def get_items(conn = Depends(get_db)):  
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT items.name, categories.name AS category, items.image_name 
+        FROM items 
+        JOIN categories ON items.category_id = categories.id
+    """)
+    raw = cur.fetchall()
+    columns_names = [description[0] for description in cur.description]
+    data = [dict(zip(columns_names, row)) for row in raw]
+    return {"items": data} 
     
-@app.get("/items/1")
-def get_item_1():
-    with open('items.json', 'r', encoding="utf-8") as f:
-        return json.load(f)["items"][0]
+
+@app.get("/items/{id}")
+def get_item_id(id: int, conn: sqlite3.Connection = Depends(get_db)):
+    cur = conn.cursor()
+    cur.execute(
+        " SELECT * FROM items WHERE id = ?", (id,)
+        )
+    raw = cur.fetchall()
+    columns_names = [description[0] for description in cur.description]
+    data = [dict(zip(columns_names, row)) for row in raw]
+    return {"items": data} 
+    
+    
+@app.get("/search")
+def serch_item(keyword: str, conn=Depends(get_db)):
+    cur = conn.cursor()
+    query = """
+    SELECT items.name, categories.category AS category, items.image_name
+    FROM items
+    JOIN categories ON items.category_id = categories.id
+    WHERE items.name = ?
+    """
+    cur.execute(query, (keyword,))
+    raw = cur.fetchall()
+    columns_names = [description[0] for description in cur.description]
+    data = [dict(zip(columns_names, row)) for row in raw]
+    return {"items": data} 
+    
