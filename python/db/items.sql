@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS categories(
     id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
+    name TEXT UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS items (
