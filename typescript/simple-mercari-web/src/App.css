@@ -1,12 +1,14 @@
 .App {
   text-align: center;
+  width: 100vw;  
+  height: 100vh;
 }
 
 .Title {
   background-color: #222427;
   min-height: 8vh;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: left;
   font-size: calc(10px + 1vmin);
@@ -17,9 +19,9 @@
   background-color: #222427;
   min-height: 8vh;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: left;
+  justify-content: flex-start;
   font-size: calc(10px + 1vmin);
   color: white;
 }
@@ -27,13 +29,22 @@
 .ItemList {
   background-color: #222427;
   min-height: 8vh;
-  display: flex;
+  display: grid;
   flex-direction: column;
   align-items: center;
-  justify-content: left;
+  justify-content: flex-start;
   font-size: calc(10px + 1vmin);
   color: white;
+  padding: 0 10px;
+  width: 100%;
+  height: 100%;
 }
+
+.ItemList > * {
+  display: flex;
+  margin-right: 10px; /* アイテム間の余白 */
+}
+
 
 .App-link {
   color: #61dafb;
@@ -45,5 +56,13 @@
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+
+@media (max-width: 600px) {
+  .ItemList {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
