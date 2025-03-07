@@ -34,8 +34,10 @@ export const ItemList = ({ reload, onLoadCompleted }: Prop) => {
         return (
           <div key={item.id} className="ItemList">
             {/* TODO: Task 2: Show item images */}
-            <img src={`http://localhost:9000/image/${item.image_name}`} />
-            <p>
+            <div className="image">
+              <img src={`http://localhost:9000/image/${item.image_name}`} />
+            </div>
+            <p className="font">
               <span>Name: {item.name}</span>
               <br />
               <span>Category: {item.category}</span>

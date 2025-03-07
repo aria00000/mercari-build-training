@@ -17,52 +17,90 @@
 
 .Listing {
   background-color: #222427;
-  min-height: 8vh;
+  padding: 16px;
   display: flex;
-  flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
-  font-size: calc(10px + 1vmin);
+  justify-content: center;
+  font-size: 16px;
   color: white;
+}
+
+form {
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 50px;
+  align-items: center;
+  justify-content: center;
+}
+
+input {
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 14px;
+  background-color: white;
+  color: black;
+}
+
+.name,
+.text,
+.file {
+  flex: 1;
+  min-width: 150px;
+}
+
+.button {
+  padding: 10px 16px;
+  background-color: white;
+  color: black;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.button:hover {
+  background-color: #0056b3;
+}
+
+.ItemList_div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));  /* アイテム同士を横並びに */
+  gap: 16px;
+  padding: 16px;
 }
 
 .ItemList {
-  background-color: #222427;
-  min-height: 8vh;
-  display: grid;
-  flex-direction: column;
+  flex-direction: column; 
   align-items: center;
-  justify-content: flex-start;
-  font-size: calc(10px + 1vmin);
-  color: white;
-  padding: 0 10px;
+  background: #222427;
+  padding: 16px;
   width: 100%;
-  height: 100%;
-}
-
-.ItemList > * {
-  display: flex;
-  margin-right: 10px; /* アイテム間の余白 */
 }
 
 
-.App-link {
-  color: #61dafb;
+.image img {
+  width: 150px;
+  height: 150px;  
+  object-fit: cover;
+  border-radius: 8pxs;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.font {
+  color: white;
+  text-align: center;
+  margin-top: 8px;
 }
-
 
 @media (max-width: 600px) {
-  .ItemList {
+  .ItemList_div {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+  form {
     flex-direction: column;
-    align-items: flex-start;
+    gap: 8px;
+  }
+
+  input, .button {
+    width: 100%;  
   }
 }
