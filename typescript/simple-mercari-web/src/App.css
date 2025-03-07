@@ -66,16 +66,10 @@ input {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));  /* アイテム同士を横並びに */
   gap: 16px;
+  background: #222427;
   padding: 16px;
 }
 
-.ItemList {
-  flex-direction: column; 
-  align-items: center;
-  background: #222427;
-  padding: 16px;
-  width: 100%;
-}
 
 
 .image img {
