@@ -1,0 +1,26 @@
+version: '3.8'
+services: 
+ app:
+  build: ./python
+  ports: 
+      - "9000:9000"
+  environment:
+      - FRONT_URL=http://localhost:3000
+  networks:
+      - app-network
+
+
+ web:
+   build: ./typescript/simple-mercari-web
+   ports: 
+      - "3000:3000"
+   environment:
+      - REACT_APP_API_URL=http://app:9000
+   depends_on:
+      - app
+   networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

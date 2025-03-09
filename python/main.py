@@ -54,9 +54,9 @@ origins = [os.environ.get("FRONT_URL", "http://localhost:3000")]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
 
@@ -92,8 +92,7 @@ async def add_item(
 
 # get_image is a handler to return an image for GET /images/{filename} .
 @app.get("/image/{image_name}")
-def get_image(image_name):
-    # Create image path
+def get_image(image_name:str):
     image = images / image_name
 
     if not image_name.endswith(".jpg"):
@@ -103,7 +102,7 @@ def get_image(image_name):
         logger.debug(f"Image not found: {image}")
         image = images / "default.jpg"
 
-    return FileResponse(image)
+    return FileResponse(image, media_type="image/jpeg")
 
 
 class Item(BaseModel):
