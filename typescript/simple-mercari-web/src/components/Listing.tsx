@@ -51,7 +51,7 @@ export const Listing = ({ onListingCompleted }: Prop) => {
     <div className="Listing">
       <form onSubmit={onSubmit}>
         <div>
-          <input
+          <input className="name"
             type="text"
             name="name"
             id="name"
@@ -59,21 +59,21 @@ export const Listing = ({ onListingCompleted }: Prop) => {
             onChange={onValueChange}
             required
           />
-          <input
+          <input className="text"
             type="text"
             name="category"
             id="category"
             placeholder="category"
             onChange={onValueChange}
           />
-          <input
+          <input className="file"
             type="file"
             name="image"
             id="image"
             onChange={onFileChange}
             required
           />
-          <button type="submit">List this item</button>
+          <button className="button" type="submit">List this item</button>
         </div>
       </form>
     </div>
