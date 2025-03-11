@@ -45,7 +45,8 @@ input {
 
 .name,
 .text,
-.file {
+.input [type="text"],
+input[type="file"] {
   flex: 1;
   min-width: 150px;
 }
@@ -62,7 +63,7 @@ input {
   background-color: #0056b3;
 }
 
-.ItemList_div {
+.ItemList {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));  /* アイテム同士を横並びに */
   gap: 16px;
