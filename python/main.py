@@ -91,11 +91,8 @@ async def add_item(
 
 
 # get_image is a handler to return an image for GET /images/{filename} .
-@app.get("/image/{item_id}")
-def get_image(item_id, conn: sqlite3.Connection = Depends(get_db)):
-    cur = conn.cursor()
-    cur.execute("SELECT items.image_name FROM items WHERE id = ?", (item_id,))
-    image_name = cur.fetchone()[0]
+@app.get("/image/{image_name}")
+def get_image(image_name:str):
     image = images / image_name
 
     if not image_name.endswith(".jpg"):
