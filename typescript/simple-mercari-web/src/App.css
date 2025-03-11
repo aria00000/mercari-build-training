@@ -87,7 +87,7 @@ input[type="file"] {
 }
 
 @media (max-width: 600px) {
-  .ItemList_div {
+  .ItemList {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
   form {
